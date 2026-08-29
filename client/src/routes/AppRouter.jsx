@@ -6,6 +6,7 @@ import Catalog from '../pages/Catalog';
 import MyLoans from '../pages/MyLoans';
 import Reservations from '../pages/Reservations';
 import Fines from '../pages/Fines';
+import AdminDashboard from '../pages/AdminDashboard';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRouter() {
@@ -50,6 +51,14 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <Fines />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute roles={['admin', 'librarian']}>
+            <AdminDashboard />
           </ProtectedRoute>
         }
       />
