@@ -1,0 +1,31 @@
+const { z } = require('zod');
+
+const checkoutSchema = z.object({
+  body: z.object({
+    bookId: z.string().uuid(),
+    userId: z.string().uuid().optional(), // staff can check out on a member's behalf
+  }),
+});
+
+const addCopySchema = z.object({
+  body: z.object({
+    bookId: z.string().uuid(),
+    shelfLocation: z.string().trim().max(50).optional(),
+    quantity: z.coerce.number().int().min(1).max(50).default(1),
+  }),
+});
+
+const recordIdSchema = z.object({
+  params: z.object({ id: z.string().uuid() }),
+});
+
+const listBorrowRecordsSchema = z.object({
+  query: z.object({
+    status: z.enum(['active', 'returned', 'overdue', 'lost']).optional(),
+    userId: z.string().uuid().optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+  }),
+});
+
+module.exports = { checkoutSchema, addCopySchema, recordIdSchema, listBorrowRecordsSchema };

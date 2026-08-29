@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment secrets — never commit these
+.env
+*/.env
+
+# Logs
+logs/
+logs/*.log
+*.log
+npm-debug.log*
+
+# Build output
+dist/
+build/
+*/dist/
+*/build/
+
+# Editor/OS junk
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Test coverage
+coverage/
