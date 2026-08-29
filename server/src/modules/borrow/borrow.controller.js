@@ -34,5 +34,22 @@ const allRecords = asyncHandler(async (req, res) => {
   const { records, meta } = await borrowService.listAllRecords(req.query);
   return new ApiResponse(200, { records, meta }).send(res);
 });
+const listCopies = asyncHandler(async (req, res) => {
+  const copies = await borrowService.listCopiesForBook(req.query.bookId);
+  return new ApiResponse(200, copies).send(res);
+});
 
-module.exports = { addCopies, checkout, returnBook, renew, myLoans, allRecords };
+const retireCopy = asyncHandler(async (req, res) => {
+  const copy = await borrowService.retireCopy(req.params.id);
+  return new ApiResponse(200, copy, 'Copy retired').send(res);
+});
+module.exports = {
+  addCopies,
+  listCopies,
+  retireCopy,
+  checkout,
+  returnBook,
+  renew,
+  myLoans,
+  allRecords,
+};

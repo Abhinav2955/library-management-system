@@ -34,8 +34,11 @@ export default function AppShell({ children }) {
            {['admin', 'librarian'].includes(user?.role) && (
             <>
               <div className="my-2 border-t border-hairline" />
-              <NavLink to="/admin" className={navLinkClass}>
+                            <NavLink to="/admin" className={navLinkClass} end>
                 Admin Dashboard
+              </NavLink>
+              <NavLink to="/admin/books" className={navLinkClass}>
+                Manage Books
               </NavLink>
             </>
           )}

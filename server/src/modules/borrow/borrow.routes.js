@@ -8,6 +8,7 @@ const {
   addCopySchema,
   recordIdSchema,
   listBorrowRecordsSchema,
+  listCopiesSchema,
 } = require('./borrow.validation');
 
 const router = express.Router();
@@ -21,5 +22,7 @@ router.get('/me', controller.myLoans);
 
 router.get('/', authorize('admin', 'librarian'), validate(listBorrowRecordsSchema), controller.allRecords);
 router.post('/copies', authorize('admin', 'librarian'), validate(addCopySchema), controller.addCopies);
+router.get('/copies', authorize('admin', 'librarian'), validate(listCopiesSchema), controller.listCopies);
+router.post('/copies/:id/retire', authorize('admin', 'librarian'), validate(recordIdSchema), controller.retireCopy);
 
 module.exports = router;

@@ -232,5 +232,40 @@ const listAllRecords = async (query) => {
 
   return { records: rows, meta: buildPaginationMeta({ page, limit, total: count }) };
 };
+const listCopiesForBook = async (bookId) => {
+  return BookCopy.findAll({ where: { bookId }, order: [['createdAt', 'ASC']] });
+};
 
-module.exports = { addCopies, checkout, returnBook, renew, listMyLoans, listAllRecords };
+// Permanently retires a copy (lost or destroyed beyond repair). Only allowed
+// from 'available' — a copy that's out on loan or held for a reservation
+// must come back through the normal return flow first, so this can't be used
+// to silently erase an active loan's target copy.
+const retireCopy = async (copyId) => {
+  return sequelize.transaction(async (t) => {
+    const copy = await BookCopy.findByPk(copyId, { transaction: t, lock: t.LOCK.UPDATE });
+    if (!copy) throw ApiError.notFound('Copy not found');
+    if (copy.status !== 'available') {
+      throw ApiError.badRequest('Only an available copy can be retired — it must be returned first');
+    }
+
+    copy.status = 'lost';
+    await copy.save({ transaction: t });
+
+    const book = await Book.findByPk(copy.bookId, { transaction: t });
+    book.totalCopies = Math.max(0, book.totalCopies - 1);
+    book.availableCopies = Math.max(0, book.availableCopies - 1);
+    await book.save({ transaction: t });
+
+    return copy;
+  });
+};
+module.exports = {
+  addCopies,
+  listCopiesForBook,
+  retireCopy,
+  checkout,
+  returnBook,
+  renew,
+  listMyLoans,
+  listAllRecords,
+};

@@ -27,5 +27,13 @@ const listBorrowRecordsSchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).optional(),
   }),
 });
-
-module.exports = { checkoutSchema, addCopySchema, recordIdSchema, listBorrowRecordsSchema };
+const listCopiesSchema = z.object({
+  query: z.object({ bookId: z.string().uuid() }),
+});
+module.exports = {
+  checkoutSchema,
+  addCopySchema,
+  recordIdSchema,
+  listBorrowRecordsSchema,
+  listCopiesSchema,
+};

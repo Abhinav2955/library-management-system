@@ -7,6 +7,8 @@ import MyLoans from '../pages/MyLoans';
 import Reservations from '../pages/Reservations';
 import Fines from '../pages/Fines';
 import AdminDashboard from '../pages/AdminDashboard';
+import AdminBooks from '../pages/AdminBooks';
+import AdminBookCopies from '../pages/AdminBookCopies';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRouter() {
@@ -59,6 +61,22 @@ export default function AppRouter() {
         element={
           <ProtectedRoute roles={['admin', 'librarian']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/books"
+        element={
+          <ProtectedRoute roles={['admin', 'librarian']}>
+            <AdminBooks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/books/:bookId/copies"
+        element={
+          <ProtectedRoute roles={['admin', 'librarian']}>
+            <AdminBookCopies />
           </ProtectedRoute>
         }
       />
