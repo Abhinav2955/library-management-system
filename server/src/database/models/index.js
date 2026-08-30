@@ -8,6 +8,7 @@ const BookCopy = require('./bookCopy.model');
 const BorrowRecord = require('./borrowRecord.model');
 const Reservation = require('./reservation.model');
 const Fine = require('./fine.model');
+const Notification = require('./notification.model');
 
 module.exports = {
   sequelize,
@@ -20,4 +21,5 @@ module.exports = {
   BorrowRecord,
   Reservation,
   Fine,
+  Notification,
 };

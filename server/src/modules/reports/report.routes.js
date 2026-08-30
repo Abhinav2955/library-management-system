@@ -15,5 +15,6 @@ router.get('/overdue', controller.overdue);
 router.get('/overdue/export', controller.exportOverdueCsv);
 router.get('/circulation', validate(circulationStatsSchema), controller.circulation);
 router.get('/fines-revenue', controller.fineRevenue);
+router.post('/run-maintenance', controller.runMaintenance);
 
 module.exports = router;

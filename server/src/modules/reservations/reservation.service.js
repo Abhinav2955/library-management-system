@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const { Reservation, Book, BookCopy, sequelize } = require('../../database/models');
 const ApiError = require('../../utils/ApiError');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
+const notificationService = require('../notifications/notification.service');
 
 const HOLD_DURATION_HOURS = 48;
 const addHours = (date, hours) => new Date(date.getTime() + hours * 3600000);
@@ -43,7 +44,15 @@ const tryFulfillNextReservation = async (bookId, copy, transaction) => {
   next.readyAt = now;
   next.expiresAt = addHours(now, HOLD_DURATION_HOURS);
   await next.save({ transaction });
-
+  const book = await Book.findByPk(bookId, { attributes: ['title'], transaction });
+  await notificationService.createNotification(
+    {
+      userId: next.userId,
+      type: 'reservation_ready',
+      message: `Your hold on "${book?.title || 'a book'}" is ready — pick it up within 48 hours.`,
+    },
+    transaction
+  );
   return true;
 };
 

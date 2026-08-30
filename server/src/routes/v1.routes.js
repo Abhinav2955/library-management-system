@@ -5,6 +5,7 @@ const borrowRoutes = require('../modules/borrow/borrow.routes');
 const reservationRoutes = require('../modules/reservations/reservation.routes');
 const fineRoutes = require('../modules/fines/fine.routes');
 const reportRoutes = require('../modules/reports/report.routes');
+const notificationRoutes = require('../modules/notifications/notification.routes');
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/borrow', borrowRoutes);
 router.use('/reservations', reservationRoutes);
 router.use('/fines', fineRoutes);
 router.use('/reports', reportRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;

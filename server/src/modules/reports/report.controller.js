@@ -1,6 +1,7 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const ApiResponse = require('../../utils/ApiResponse');
 const reportService = require('./report.service');
+const { runMaintenanceSweep } = require('../../jobs/scheduler');
 
 const dashboard = asyncHandler(async (req, res) => {
   const summary = await reportService.getDashboardSummary();
@@ -34,4 +35,17 @@ const exportOverdueCsv = asyncHandler(async (req, res) => {
   res.status(200).send(csv);
 });
 
-module.exports = { dashboard, topBooks, overdue, circulation, fineRevenue, exportOverdueCsv };
+const runMaintenance = asyncHandler(async (req, res) => {
+  const result = await runMaintenanceSweep();
+  return new ApiResponse(200, result, 'Maintenance sweep completed').send(res);
+});
+
+module.exports = {
+  dashboard,
+  topBooks,
+  overdue,
+  circulation,
+  fineRevenue,
+  exportOverdueCsv,
+  runMaintenance,
+};

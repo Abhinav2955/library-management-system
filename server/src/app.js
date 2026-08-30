@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const swaggerUi = require('swagger-ui-express');
+const openapiSpec = require('./docs/openapi.json');
 
 const env = require('./config/env');
 const logger = require('./config/logger');
@@ -38,6 +40,9 @@ app.use('/api', apiLimiter);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: Date.now() });
 });
+// --- Interactive API documentation ---
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+app.get('/api-docs.json', (req, res) => res.json(openapiSpec));
 
 // --- API routes ---
 app.use('/api/v1', v1Routes);

@@ -1,28 +1,35 @@
+const http = require('http');
 const app = require('./app');
 const env = require('./config/env');
 const logger = require('./config/logger');
 const { connectDB, sequelize } = require('./config/db');
-require('./database/models'); // ensures associations are registered
+require('./database/models');
+const { startScheduledJobs, runMaintenanceSweep } = require('./jobs/scheduler');
+const { initSocket } = require('./sockets/notification.socket');
 
 let server;
 
 const start = async () => {
   await connectDB();
 
-  // In development this keeps the schema in sync without migrations.
-  // Production should rely on `npm run migrate` instead of sync().
   if (env.NODE_ENV === 'development') {
     await sequelize.sync({ alter: true });
     logger.info('🗂️  Models synced (development mode)');
   }
 
-  server = app.listen(env.PORT, () => {
+  const httpServer = http.createServer(app);
+  initSocket(httpServer);
+
+  server = httpServer.listen(env.PORT, () => {
     logger.info(`🚀 Server listening on port ${env.PORT} [${env.NODE_ENV}]`);
+  });
+
+  startScheduledJobs();
+  runMaintenanceSweep().catch((err) => {
+    logger.error('Initial maintenance sweep failed', { error: err.message });
   });
 };
 
-// Graceful shutdown: stop accepting new connections, let in-flight
-// requests finish, then close the DB pool before exiting.
 const shutdown = async (signal) => {
   logger.info(`${signal} received — shutting down gracefully`);
   if (server) {
@@ -31,7 +38,6 @@ const shutdown = async (signal) => {
       logger.info('Closed out remaining connections. Exiting.');
       process.exit(0);
     });
-    // Force-exit if something hangs.
     setTimeout(() => process.exit(1), 10000).unref();
   } else {
     process.exit(0);

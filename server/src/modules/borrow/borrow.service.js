@@ -4,6 +4,8 @@ const ApiError = require('../../utils/ApiError');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
 const reservationService = require('../reservations/reservation.service');
 const fineService = require('../fines/fine.service');
+const notificationService = require('../notifications/notification.service');
+
 
 const LOAN_PERIOD_DAYS = 14;
 const MAX_RENEWALS = 2;
@@ -164,8 +166,17 @@ const returnBook = async (recordId) => {
     // Fine creation happens right here, inside the same transaction as the
     // return, so a fine and its triggering overdue return are always
     // consistent with each other (no partial-write window between them).
-    if (wasOverdue) {
-      await fineService.createFineForOverdueReturn(record, t);
+        if (wasOverdue) {
+      const fine = await fineService.createFineForOverdueReturn(record, t);
+      await notificationService.createNotification(
+        {
+          userId: record.userId,
+          type: 'fine_issued',
+          message: `A fine of $${fine.amount} was applied for returning a book late.`,
+          borrowRecordId: record.id,
+        },
+        t
+      );
     }
 
     return { record, wasOverdue };
