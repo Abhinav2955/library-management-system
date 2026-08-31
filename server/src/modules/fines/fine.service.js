@@ -1,16 +1,16 @@
-const { Op } = require('sequelize');
+const crypto = require('crypto');
 const { Fine, sequelize } = require('../../database/models');
 const ApiError = require('../../utils/ApiError');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
+const razorpay = require('../../config/razorpay');
+const env = require('../../config/env');
 
-const FINE_RATE_PER_DAY = 0.5; // $0.50/day overdue
-const FINE_CAP = 20.0; // never charge more than this per loan
-const MAX_UNPAID_BALANCE_FOR_CHECKOUT = 10.0; // blocks new checkouts above this balance
+const FINE_RATE_PER_DAY = 0.5;
+const FINE_CAP = 20.0;
+const MAX_UNPAID_BALANCE_FOR_CHECKOUT = 10.0;
 
 const msPerDay = 86400000;
 
-// Called from borrow.service.returnBook (same transaction) whenever a book
-// comes back late. Keeps fine math out of the circulation service entirely.
 const createFineForOverdueReturn = async (record, transaction) => {
   const daysLate = Math.ceil((record.returnedAt - record.dueAt) / msPerDay);
   const amount = Math.min(daysLate * FINE_RATE_PER_DAY, FINE_CAP).toFixed(2);
@@ -32,35 +32,84 @@ const getPendingBalance = async (userId) => {
   return Number(result) || 0;
 };
 
-// Used by borrow.service.checkout to enforce "settle your fines before you
-// borrow more" — a real, commonly-enforced library policy.
 const assertCheckoutNotBlocked = async (userId) => {
   const balance = await getPendingBalance(userId);
   if (balance > MAX_UNPAID_BALANCE_FOR_CHECKOUT) {
     throw ApiError.forbidden(
-      `Outstanding fines of $${balance.toFixed(2)} exceed the $${MAX_UNPAID_BALANCE_FOR_CHECKOUT.toFixed(2)} limit for new checkouts`
+      `Outstanding fines of ${balance.toFixed(2)} exceed the ${MAX_UNPAID_BALANCE_FOR_CHECKOUT.toFixed(2)} limit for new checkouts`
     );
   }
 };
 
-const payFine = async (fineId, requestingUser) => {
+const recordManualPayment = async (fineId) => {
   return sequelize.transaction(async (t) => {
     const fine = await Fine.findByPk(fineId, { transaction: t, lock: t.LOCK.UPDATE });
     if (!fine) throw ApiError.notFound('Fine not found');
-
-    if (fine.userId !== requestingUser.id && !['admin', 'librarian'].includes(requestingUser.role)) {
-      throw ApiError.forbidden('You can only pay your own fines');
-    }
     if (fine.status !== 'pending') {
       throw ApiError.badRequest('This fine is not pending payment');
     }
 
-    // A real deployment plugs a payment gateway (Stripe/Razorpay) in here —
-    // charge `fine.amount`, verify the webhook/response, then mark paid.
-    // Kept as a direct status flip so the ledger and API contract are ready
-    // for that integration without changing the interface.
     fine.status = 'paid';
     fine.paidAt = new Date();
+    await fine.save({ transaction: t });
+    return fine;
+  });
+};
+
+const createPaymentOrder = async (fineId, requestingUser) => {
+  if (!razorpay) {
+    throw ApiError.internal('Online payments are not configured on this server yet');
+  }
+
+  const fine = await Fine.findByPk(fineId);
+  if (!fine) throw ApiError.notFound('Fine not found');
+  if (fine.userId !== requestingUser.id && !['admin', 'librarian'].includes(requestingUser.role)) {
+    throw ApiError.forbidden('You can only pay your own fines');
+  }
+  if (fine.status !== 'pending') {
+    throw ApiError.badRequest('This fine is not pending payment');
+  }
+
+  const amountInPaise = Math.round(Number(fine.amount) * 100);
+  const order = await razorpay.orders.create({
+    amount: amountInPaise,
+    currency: 'INR',
+    receipt: `fine_${fine.id}`,
+    notes: { fineId: fine.id, userId: fine.userId },
+  });
+
+  fine.razorpayOrderId = order.id;
+  await fine.save();
+
+  return { orderId: order.id, amount: amountInPaise, currency: 'INR', keyId: env.RAZORPAY_KEY_ID };
+};
+
+const verifyAndMarkPaid = async (fineId, payload, requestingUser) => {
+  const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = payload;
+
+  return sequelize.transaction(async (t) => {
+    const fine = await Fine.findByPk(fineId, { transaction: t, lock: t.LOCK.UPDATE });
+    if (!fine) throw ApiError.notFound('Fine not found');
+    if (fine.userId !== requestingUser.id && !['admin', 'librarian'].includes(requestingUser.role)) {
+      throw ApiError.forbidden('You can only pay your own fines');
+    }
+    if (fine.status === 'paid') return fine;
+    if (fine.razorpayOrderId !== orderId) {
+      throw ApiError.badRequest('This payment does not match the order for this fine');
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
+      .update(`${orderId}|${paymentId}`)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      throw ApiError.badRequest('Payment verification failed — signature mismatch');
+    }
+
+    fine.status = 'paid';
+    fine.paidAt = new Date();
+    fine.razorpayPaymentId = paymentId;
     await fine.save({ transaction: t });
     return fine;
   });
@@ -116,7 +165,9 @@ module.exports = {
   createFineForOverdueReturn,
   getPendingBalance,
   assertCheckoutNotBlocked,
-  payFine,
+  recordManualPayment,
+  createPaymentOrder,
+  verifyAndMarkPaid,
   waiveFine,
   listMyFines,
   listAllFines,

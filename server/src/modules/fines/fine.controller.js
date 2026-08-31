@@ -12,9 +12,19 @@ const allFines = asyncHandler(async (req, res) => {
   return new ApiResponse(200, { fines, meta }).send(res);
 });
 
-const pay = asyncHandler(async (req, res) => {
-  const fine = await fineService.payFine(req.params.id, req.user);
-  return new ApiResponse(200, fine, 'Fine paid successfully').send(res);
+const createPaymentOrder = asyncHandler(async (req, res) => {
+  const result = await fineService.createPaymentOrder(req.params.id, req.user);
+  return new ApiResponse(200, result).send(res);
+});
+
+const verifyPayment = asyncHandler(async (req, res) => {
+  const fine = await fineService.verifyAndMarkPaid(req.params.id, req.body, req.user);
+  return new ApiResponse(200, fine, 'Payment verified — fine paid').send(res);
+});
+
+const recordManualPayment = asyncHandler(async (req, res) => {
+  const fine = await fineService.recordManualPayment(req.params.id);
+  return new ApiResponse(200, fine, 'Payment recorded').send(res);
 });
 
 const waive = asyncHandler(async (req, res) => {
@@ -22,4 +32,4 @@ const waive = asyncHandler(async (req, res) => {
   return new ApiResponse(200, fine, 'Fine waived').send(res);
 });
 
-module.exports = { myFines, allFines, pay, waive };
+module.exports = { myFines, allFines, createPaymentOrder, verifyPayment, recordManualPayment, waive };

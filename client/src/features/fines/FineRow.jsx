@@ -22,7 +22,7 @@ export default function FineRow({ fine, onPay, isPaying, payError }) {
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <span className="font-mono text-sm font-semibold text-ink">
-            ${Number(fine.amount).toFixed(2)}
+            ₹{Number(fine.amount).toFixed(2)}
           </span>
           <StampBadge tone={badge.tone}>{badge.label}</StampBadge>
         </div>
@@ -35,7 +35,7 @@ export default function FineRow({ fine, onPay, isPaying, payError }) {
           variant="brass"
           className="mt-3 text-xs"
           disabled={isPaying}
-          onClick={() => onPay(fine.id)}
+          onClick={() => onPay(fine)}
         >
           {isPaying ? 'Processing…' : 'Pay now'}
         </Button>

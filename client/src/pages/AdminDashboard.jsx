@@ -99,8 +99,8 @@ export default function AdminDashboard() {
         <StatCard label="Reservation Queue" value={summary.waitingReservations} />
         <StatCard label="Total Copies" value={summary.totalCopies} />
         <StatCard label="Available Now" value={summary.availableCopies} />
-        <StatCard label="Pending Fines" value={`$${summary.pendingFinesTotal.toFixed(2)}`} tone="brass" />
-        <StatCard label="Collected Fines" value={`$${summary.collectedFinesTotal.toFixed(2)}`} />
+        <StatCard label="Pending Fines" value={`₹₹{summary.pendingFinesTotal.toFixed(2)}`} tone="brass" />
+        <StatCard label="Collected Fines" value={`₹₹{summary.collectedFinesTotal.toFixed(2)}`} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

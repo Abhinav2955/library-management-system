@@ -20,6 +20,8 @@ Fine.init(
     paidAt: { type: DataTypes.DATE, allowNull: true, field: 'paid_at' },
     waivedByUserId: { type: DataTypes.UUID, allowNull: true, field: 'waived_by_user_id' },
     waivedReason: { type: DataTypes.STRING(255), allowNull: true, field: 'waived_reason' },
+    razorpayOrderId: { type: DataTypes.STRING(255), allowNull: true, field: 'razorpay_order_id' },
+    razorpayPaymentId: { type: DataTypes.STRING(255), allowNull: true, field: 'razorpay_payment_id' },
   },
   { sequelize, modelName: 'Fine', tableName: 'fines' }
 );

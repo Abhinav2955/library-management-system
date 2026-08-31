@@ -3,9 +3,12 @@ import AppShell from '../components/layout/AppShell';
 import StampBadge from '../components/common/StampBadge';
 import Pagination from '../components/common/Pagination';
 import FineRow from '../features/fines/FineRow';
-import { listMyFines, payFine } from '../api/fines.api';
+import { loadRazorpayScript } from '../features/fines/loadRazorpayScript';
+import { listMyFines, createPaymentOrder, verifyPayment } from '../api/fines.api';
+import { useAuth } from '../features/auth/AuthContext';
 
 export default function Fines() {
+  const { user } = useAuth();
   const [fines, setFines] = useState([]);
   const [pendingBalance, setPendingBalance] = useState(0);
   const [meta, setMeta] = useState(null);
@@ -37,16 +40,44 @@ export default function Fines() {
     fetchFines(page);
   }, [page, fetchFines]);
 
-  const handlePay = async (fineId) => {
-    setPayingId(fineId);
-    setPayErrors((prev) => ({ ...prev, [fineId]: '' }));
+  const handlePay = async (fine) => {
+    setPayingId(fine.id);
+    setPayErrors((prev) => ({ ...prev, [fine.id]: '' }));
+
     try {
-      await payFine(fineId);
-      await fetchFines(page);
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) throw new Error('Could not load the payment popup. Check your connection.');
+
+      const { orderId, amount, currency, keyId } = await createPaymentOrder(fine.id);
+
+      const checkout = new window.Razorpay({
+        key: keyId,
+        amount,
+        currency,
+        name: 'Athenaeum Library',
+        description: fine.reason,
+        order_id: orderId,
+        prefill: { name: user?.name, email: user?.email },
+        theme: { color: '#A8763E' },
+        handler: async (response) => {
+          try {
+            await verifyPayment(fine.id, response);
+            await fetchFines(page);
+          } catch {
+            setPayErrors((prev) => ({ ...prev, [fine.id]: 'Payment verification failed. Contact staff if you were charged.' }));
+          } finally {
+            setPayingId(null);
+          }
+        },
+        modal: {
+          ondismiss: () => setPayingId(null),
+        },
+      });
+
+      checkout.open();
     } catch (err) {
-      const message = err.response?.data?.message || 'Could not process payment.';
-      setPayErrors((prev) => ({ ...prev, [fineId]: message }));
-    } finally {
+      const message = err.response?.data?.message || err.message || 'Could not start the payment.';
+      setPayErrors((prev) => ({ ...prev, [fine.id]: message }));
       setPayingId(null);
     }
   };
@@ -61,16 +92,14 @@ export default function Fines() {
         {!isLoading && (
           <div className="text-right">
             <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">Pending balance</p>
-            <p className="font-serif text-2xl font-semibold text-ink">
-              ${pendingBalance.toFixed(2)}
-            </p>
+            <p className="font-serif text-2xl font-semibold text-ink">₹{pendingBalance.toFixed(2)}</p>
           </div>
         )}
       </div>
 
       {pendingBalance > 10 && (
         <div className="mb-4 rounded-card border border-status-warning bg-status-warningBg px-3 py-2 text-sm text-status-warning">
-          Your pending balance exceeds $10.00 — new checkouts are blocked until this is paid down.
+          Your pending balance exceeds ₹10.00 — new checkouts are blocked until this is paid down.
         </div>
       )}
 
