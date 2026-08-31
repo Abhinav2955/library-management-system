@@ -22,6 +22,13 @@ const envSchema = z.object({
 
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
+
+  // Optional — the app boots fine without these; fine.service simply
+  // returns a clear error if an online payment is attempted before they're
+  // set, rather than forcing every developer to have a Razorpay account
+  // just to run the project.
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
