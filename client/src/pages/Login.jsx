@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/layout/AuthLayout';
+import PasswordInput from '../components/common/PasswordInput';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { useAuth } from '../features/auth/AuthContext';
@@ -64,10 +65,9 @@ export default function Login() {
           onChange={handleChange('email')}
           error={fieldErrors.email}
         />
-        <Input
+                <PasswordInput
           id="password"
           label="Password"
-          type="password"
           autoComplete="current-password"
           value={form.password}
           onChange={handleChange('password')}

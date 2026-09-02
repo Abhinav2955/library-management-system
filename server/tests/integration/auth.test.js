@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../../src/app');
 const { sequelize } = require('../../src/config/db');
 
+
 const testUser = {
   name: 'Test User',
   email: `test.${Date.now()}@example.com`,
@@ -12,10 +13,12 @@ beforeAll(async () => {
   await sequelize.sync({ force: true }); // wipe & rebuild schema on the test DB
 });
 
-afterAll(async () => {
-  await sequelize.close();
-});
-
+// Deliberately no afterAll close here — sequelize/redis/the email queue
+// are shared across all six test files under --runInBand (empirically
+// confirmed: closing them in one file's afterAll broke a LATER file's
+// beforeAll with 'ConnectionManager...called after closed'). The whole
+// process force-exits after the full suite via --forceExit in package.json
+// instead, which is the standard, accepted fix for this exact situation.
 describe('Auth flow', () => {
   it('registers a new user', async () => {
     const res = await request(app).post('/api/v1/auth/register').send(testUser);

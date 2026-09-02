@@ -8,27 +8,30 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint src --ext .js",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "seed": "sequelize-cli db:seed:all"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.12.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.1",
     "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "mysql2": "^3.10.1",
     "node-cron": "^4.6.0",
-        "socket.io": "^4.7.5",
-        "swagger-ui-express": "^5.0.1",
-        "razorpay": "^2.9.4",
+    "nodemailer": "^9.1.0",
+    "razorpay": "^2.9.4",
     "sequelize": "^6.37.3",
+    "socket.io": "^4.7.5",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.1",
     "winston": "^3.13.0",
     "zod": "^3.23.8"
@@ -41,6 +44,8 @@
     "supertest": "^7.0.0"
   },
   "allowScripts": {
-    "bcrypt@6.0.0": true
+    "bcrypt@6.0.0": true,
+    "@scarf/scarf@1.4.0": true,
+    "msgpackr-extract@3.0.4": true
   }
 }

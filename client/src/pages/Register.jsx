@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/layout/AuthLayout';
+import PasswordInput from '../components/common/PasswordInput';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { useAuth } from '../features/auth/AuthContext';
@@ -41,7 +42,8 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      await register(form);
+      const payload = { ...form, phone: form.phone.trim() || undefined };
+      await register(payload);
       // Registration doesn't log the user in server-side, so chain a login
       // immediately for a one-step signup experience.
       await login({ email: form.email, password: form.password });
@@ -88,11 +90,10 @@ export default function Register() {
           value={form.phone}
           onChange={handleChange('phone')}
         />
-        <Input
+        <PasswordInput
           id="password"
           label="Password"
-          type="password"
-          autoComplete="new-password"
+          autoComplete="current-password"
           value={form.password}
           onChange={handleChange('password')}
           error={fieldErrors.password}

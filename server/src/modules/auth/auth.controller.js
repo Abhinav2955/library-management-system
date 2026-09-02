@@ -52,4 +52,35 @@ const changePassword = asyncHandler(async (req, res) => {
   return new ApiResponse(200, null, 'Password changed. Please log in again.').send(res);
 });
 
-module.exports = { register, login, refresh, logout, me, changePassword };
+const verifyEmail = asyncHandler(async (req, res) => {
+  await authService.verifyEmail(req.body.token);
+  return new ApiResponse(200, null, 'Email verified successfully').send(res);
+});
+
+const resendVerification = asyncHandler(async (req, res) => {
+  await authService.resendVerificationEmail(req.user.id);
+  return new ApiResponse(200, null, 'Verification email sent').send(res);
+});
+
+const forgotPassword = asyncHandler(async (req, res) => {
+  await authService.forgotPassword(req.body.email);
+  return new ApiResponse(200, null, 'If that email is registered, a reset link has been sent').send(res);
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  await authService.resetPassword(req.body.token, req.body.newPassword);
+  return new ApiResponse(200, null, 'Password reset successfully. Please log in.').send(res);
+});
+
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  me,
+  changePassword,
+  verifyEmail,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+};

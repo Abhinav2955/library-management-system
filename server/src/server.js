@@ -6,8 +6,10 @@ const { connectDB, sequelize } = require('./config/db');
 require('./database/models');
 const { startScheduledJobs, runMaintenanceSweep } = require('./jobs/scheduler');
 const { initSocket } = require('./sockets/notification.socket');
+const { startEmailWorker } = require('./jobs/workers/email.worker');
 
 let server;
+let emailWorker;
 
 const start = async () => {
   await connectDB();
@@ -25,6 +27,7 @@ const start = async () => {
   });
 
   startScheduledJobs();
+  emailWorker = startEmailWorker();
   runMaintenanceSweep().catch((err) => {
     logger.error('Initial maintenance sweep failed', { error: err.message });
   });
@@ -35,6 +38,7 @@ const shutdown = async (signal) => {
   if (server) {
     server.close(async () => {
       await sequelize.close();
+      if (emailWorker) await emailWorker.close();
       logger.info('Closed out remaining connections. Exiting.');
       process.exit(0);
     });

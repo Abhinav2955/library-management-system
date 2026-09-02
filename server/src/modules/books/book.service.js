@@ -33,12 +33,16 @@ const createBook = async (data) => {
     if (data.authorIds?.length) await book.setAuthors(data.authorIds, { transaction: t });
     if (data.categoryIds?.length) await book.setCategories(data.categoryIds, { transaction: t });
 
-    return getBookById(book.id);
+    // MUST pass the transaction here — without it, this read happens on a
+    // separate DB connection that (under MySQL's default REPEATABLE READ
+    // isolation) cannot see the just-created, not-yet-committed row. That
+    // would throw "Book not found" and roll back the entire creation.
+    return getBookById(book.id, { transaction: t });
   });
 };
 
-const getBookById = async (id) => {
-  const book = await Book.findByPk(id, { include: includeRelations });
+const getBookById = async (id, options = {}) => {
+  const book = await Book.findByPk(id, { include: includeRelations, ...options });
   if (!book) throw ApiError.notFound('Book not found');
   return book;
 };
@@ -95,7 +99,7 @@ const updateBook = async (id, data) => {
     await book.update(data, { transaction: t });
     if (data.authorIds) await book.setAuthors(data.authorIds, { transaction: t });
     if (data.categoryIds) await book.setCategories(data.categoryIds, { transaction: t });
-    return getBookById(book.id);
+    return getBookById(book.id, { transaction: t }); // same reasoning as createBook above
   });
 };
 

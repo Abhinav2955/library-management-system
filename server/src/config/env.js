@@ -1,7 +1,6 @@
 const { z } = require('zod');
 require('dotenv').config();
 
-// Fail fast: if a required env var is missing/malformed, the app should not boot.
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(5000),
@@ -23,12 +22,19 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
 
-  // Optional — the app boots fine without these; fine.service simply
-  // returns a clear error if an online payment is attempted before they're
-  // set, rather than forcing every developer to have a Razorpay account
-  // just to run the project.
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.coerce.number().default(6379),
+
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 
 const parsed = envSchema.safeParse(process.env);

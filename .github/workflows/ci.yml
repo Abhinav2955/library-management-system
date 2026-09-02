@@ -24,6 +24,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     defaults:
       run:
@@ -36,6 +45,8 @@ jobs:
       DB_NAME: library_db_test
       DB_USER: root
       DB_PASSWORD: root_password
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
       JWT_ACCESS_SECRET: ci_test_access_secret_do_not_use_in_prod
       JWT_REFRESH_SECRET: ci_test_refresh_secret_do_not_use_in_prod
       CLIENT_ORIGIN: http://localhost:5173
@@ -60,6 +71,14 @@ jobs:
             mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot_password && break
             echo "Waiting for MySQL... ($i/20)"
             sleep 3
+          done
+
+      - name: Wait for Redis to accept connections
+        run: |
+          for i in $(seq 1 20); do
+            redis-cli -h 127.0.0.1 -p 6379 ping && break
+            echo "Waiting for Redis... ($i/20)"
+            sleep 2
           done
 
       - name: Run test suite

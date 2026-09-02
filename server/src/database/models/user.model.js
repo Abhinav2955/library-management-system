@@ -3,8 +3,8 @@ const { sequelize } = require('../../config/db');
 
 class User extends Model {
   toSafeJSON() {
-    const { id, name, email, role, membershipStatus, phone, createdAt } = this;
-    return { id, name, email, role, membershipStatus, phone, createdAt };
+    const { id, name, email, role, membershipStatus, phone, isEmailVerified, createdAt } = this;
+    return { id, name, email, role, membershipStatus, phone, isEmailVerified, createdAt };
   }
 }
 
@@ -59,6 +59,26 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true,
       field: 'locked_until',
+    },
+    emailVerificationTokenHash: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'email_verification_token_hash',
+    },
+    emailVerificationExpires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'email_verification_expires',
+    },
+    passwordResetTokenHash: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'password_reset_token_hash',
+    },
+    passwordResetExpires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'password_reset_expires',
     },
   },
   {

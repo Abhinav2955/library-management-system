@@ -1,8 +1,11 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { User, RefreshToken } = require('../../database/models');
 const ApiError = require('../../utils/ApiError');
 const env = require('../../config/env');
+const logger = require('../../config/logger');
+const { queueEmail } = require('../../jobs/queues/email.queue');
 const {
   signAccessToken,
   signRefreshToken,
@@ -13,6 +16,8 @@ const {
 const SALT_ROUNDS = 12;
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const VERIFICATION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
 const msFromExpiry = (expiresIn) => {
   // supports simple formats like '15m', '7d', '1h'
@@ -22,6 +27,16 @@ const msFromExpiry = (expiresIn) => {
   const unit = { s: 1000, m: 60000, h: 3600000, d: 86400000 }[match[2]];
   return value * unit;
 };
+
+// Belt-and-suspenders alongside the Redis client's own connectTimeout/
+// enableOfflineQueue settings (see config/redis.js) — guarantees a queueing
+// attempt can never stall a register/login/reset request beyond 2 seconds,
+// regardless of what state the Redis connection is in.
+const withTimeout = (promise, ms) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Email queue timed out')), ms)),
+  ]);
 
 const issueTokenPair = async (user, meta = {}) => {
   const accessToken = signAccessToken(user);
@@ -38,6 +53,36 @@ const issueTokenPair = async (user, meta = {}) => {
   return { accessToken, refreshToken };
 };
 
+// Only the hash is ever stored (same principle as password/refresh-token
+// hashing) — the raw token exists only in the emailed link, so a database
+// leak alone can't be used to verify someone else's account.
+const sendVerificationEmail = async (user) => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.emailVerificationTokenHash = hashToken(rawToken);
+  user.emailVerificationExpires = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MS);
+  await user.save();
+
+  const link = `${env.FRONTEND_URL}/verify-email?token=${rawToken}`;
+  try {
+    await withTimeout(
+      queueEmail({
+        to: user.email,
+        subject: 'Verify your Athenaeum account',
+        html: `<p>Hi ${user.name},</p>
+          <p>Welcome to Athenaeum Library. Please verify your email to complete your registration:</p>
+          <p><a href="${link}">${link}</a></p>
+          <p>This link expires in 24 hours.</p>`,
+      }),
+      2000
+    );
+  } catch (err) {
+    // Registration itself should still succeed even if the email queue is
+    // unreachable (e.g. Redis not running locally) — the person can request
+    // a fresh link later via /auth/resend-verification.
+    logger.error('Failed to queue verification email', { error: err.message });
+  }
+};
+
 const register = async ({ name, email, password, phone }) => {
   const existing = await User.findOne({ where: { email } });
   if (existing) {
@@ -47,7 +92,37 @@ const register = async ({ name, email, password, phone }) => {
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await User.create({ name, email, passwordHash, phone, role: 'member' });
 
+  await sendVerificationEmail(user);
+
   return user;
+};
+
+const verifyEmail = async (rawToken) => {
+  const tokenHash = hashToken(rawToken);
+  const user = await User.findOne({
+    where: { emailVerificationTokenHash: tokenHash, emailVerificationExpires: { [Op.gt]: new Date() } },
+  });
+
+  if (!user) {
+    throw ApiError.badRequest('This verification link is invalid or has expired');
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerificationTokenHash = null;
+  user.emailVerificationExpires = null;
+  await user.save();
+
+  return user;
+};
+
+const resendVerificationEmail = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw ApiError.notFound('User not found');
+  if (user.isEmailVerified) {
+    throw ApiError.badRequest('This email is already verified');
+  }
+
+  await sendVerificationEmail(user);
 };
 
 const login = async ({ email, password }, meta = {}) => {
@@ -160,4 +235,69 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   );
 };
 
-module.exports = { register, login, refresh, logout, changePassword };
+// Deliberately never reveals whether the email exists — the response is
+// identical either way, so this endpoint can't be used to enumerate
+// registered accounts.
+const forgotPassword = async (email) => {
+  const user = await User.findOne({ where: { email } });
+  if (!user) return; // silent no-op — same response as the success path
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.passwordResetTokenHash = hashToken(rawToken);
+  user.passwordResetExpires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
+  await user.save();
+
+  const link = `${env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+  try {
+    await withTimeout(
+      queueEmail({
+        to: user.email,
+        subject: 'Reset your Athenaeum password',
+        html: `<p>Hi ${user.name},</p>
+          <p>We received a request to reset your password. This link expires in 1 hour:</p>
+          <p><a href="${link}">${link}</a></p>
+          <p>If you didn't request this, you can safely ignore this email.</p>`,
+      }),
+      2000
+    );
+  } catch (err) {
+    logger.error('Failed to queue password reset email', { error: err.message });
+  }
+};
+
+const resetPassword = async (rawToken, newPassword) => {
+  const tokenHash = hashToken(rawToken);
+  const user = await User.findOne({
+    where: { passwordResetTokenHash: tokenHash, passwordResetExpires: { [Op.gt]: new Date() } },
+  });
+
+  if (!user) {
+    throw ApiError.badRequest('This password reset link is invalid or has expired');
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  user.passwordResetTokenHash = null;
+  user.passwordResetExpires = null;
+  user.failedLoginAttempts = 0;
+  user.lockedUntil = null;
+  await user.save();
+
+  // A password reset is exactly the kind of event that should kill every
+  // existing session — same reasoning as changePassword above.
+  await RefreshToken.update(
+    { revokedAt: new Date() },
+    { where: { userId: user.id, revokedAt: { [Op.is]: null } } }
+  );
+};
+
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  changePassword,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
+};

@@ -12,7 +12,7 @@ Reservation.init(
     bookId: { type: DataTypes.UUID, allowNull: false, field: 'book_id' },
     userId: { type: DataTypes.UUID, allowNull: false, field: 'user_id' },
     copyId: { type: DataTypes.UUID, allowNull: true, field: 'copy_id' },
-    requestedAt: { type: DataTypes.DATE, allowNull: false, field: 'requested_at' },
+    requestedAt: { type: DataTypes.DATE(3), allowNull: false, field: 'requested_at' },
     readyAt: { type: DataTypes.DATE, allowNull: true, field: 'ready_at' },
     expiresAt: { type: DataTypes.DATE, allowNull: true, field: 'expires_at' },
     status: {

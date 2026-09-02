@@ -51,28 +51,29 @@ const getDashboardSummary = async () => {
 
 const getMostBorrowedBooks = async (limit = 10) => {
   const rows = await BorrowRecord.findAll({
-    attributes: [[fn('COUNT', col('BorrowRecord.id')), 'timesBorrowed']],
-    include: [
-      {
-        model: BookCopy,
-        as: 'copy',
-        attributes: [],
-        required: true,
-        include: [{ model: Book, as: 'book', attributes: ['id', 'title', 'isbn', 'coverUrl'] }],
-      },
+    attributes: [
+      [col('copy.book_id'), 'bookId'],
+      [fn('COUNT', col('BorrowRecord.id')), 'timesBorrowed'],
     ],
-    group: ['copy.book.id'],
+    include: [{ model: BookCopy, as: 'copy', attributes: [] }],
+    group: ['copy.book_id'],
     order: [[literal('timesBorrowed'), 'DESC']],
     limit,
-    subQuery: false,
+    raw: true,
   });
 
+  const bookIds = rows.map((r) => r.bookId);
+  const books = await Book.findAll({
+    where: { id: bookIds },
+    attributes: ['id', 'title', 'isbn', 'coverUrl'],
+  });
+  const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
+
   return rows.map((r) => ({
-    book: r.copy.book,
-    timesBorrowed: Number(r.get('timesBorrowed')),
+    book: bookById[r.bookId],
+    timesBorrowed: Number(r.timesBorrowed),
   }));
 };
-
 const getOverdueLoans = async () => {
   return BorrowRecord.findAll({
     where: { status: { [Op.in]: ['active', 'overdue'] }, dueAt: { [Op.lt]: new Date() } },
