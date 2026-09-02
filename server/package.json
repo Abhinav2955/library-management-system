@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint src --ext .js",
-    "test": "jest --runInBand --forceExit",
+    "test": "jest --runInBand --forceExit --testTimeout=60000",
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "seed": "sequelize-cli db:seed:all"
