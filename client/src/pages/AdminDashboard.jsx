@@ -99,8 +99,8 @@ export default function AdminDashboard() {
         <StatCard label="Reservation Queue" value={summary.waitingReservations} />
         <StatCard label="Total Copies" value={summary.totalCopies} />
         <StatCard label="Available Now" value={summary.availableCopies} />
-        <StatCard label="Pending Fines" value={`₹₹{summary.pendingFinesTotal.toFixed(2)}`} tone="brass" />
-        <StatCard label="Collected Fines" value={`₹₹{summary.collectedFinesTotal.toFixed(2)}`} />
+        <StatCard label="Pending Fines" value={`₹${summary.pendingFinesTotal.toFixed(2)}`} tone="brass" />
+        <StatCard label="Collected Fines" value={`₹${summary.collectedFinesTotal.toFixed(2)}`} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -122,19 +122,19 @@ export default function AdminDashboard() {
             <div>
               <p className="font-mono text-xs uppercase text-ink-muted">Pending</p>
               <p className="mt-1 font-serif text-xl font-semibold text-brass-dark">
-                ${fineRevenue.pending.toFixed(2)}
+                ₹{fineRevenue.pending.toFixed(2)}
               </p>
             </div>
             <div>
               <p className="font-mono text-xs uppercase text-ink-muted">Collected</p>
               <p className="mt-1 font-serif text-xl font-semibold text-status-success">
-                ${fineRevenue.collected.toFixed(2)}
+                ₹{fineRevenue.collected.toFixed(2)}
               </p>
             </div>
             <div>
               <p className="font-mono text-xs uppercase text-ink-muted">Waived</p>
               <p className="mt-1 font-serif text-xl font-semibold text-ink-muted">
-                ${fineRevenue.waived.toFixed(2)}
+                ₹{fineRevenue.waived.toFixed(2)}
               </p>
             </div>
           </div>
