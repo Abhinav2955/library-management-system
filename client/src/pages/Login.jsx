@@ -65,7 +65,7 @@ export default function Login() {
           onChange={handleChange('email')}
           error={fieldErrors.email}
         />
-                <PasswordInput
+        <PasswordInput
           id="password"
           label="Password"
           autoComplete="current-password"
@@ -73,6 +73,9 @@ export default function Login() {
           onChange={handleChange('password')}
           error={fieldErrors.password}
         />
+        <Link to="/forgot-password" className="-mt-2 self-end text-xs font-medium text-brass hover:underline">
+          Forgot password?
+        </Link>
 
         <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
           {isSubmitting ? 'Signing in…' : 'Sign in'}

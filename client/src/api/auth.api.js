@@ -26,3 +26,23 @@ export const silentRefresh = async () => {
   setAccessToken(res.data.data.accessToken);
   return res.data.data.user;
 };
+
+export const verifyEmail = async (token) => {
+  const res = await axiosClient.post('/auth/verify-email', { token });
+  return res.data;
+};
+
+export const resendVerification = async () => {
+  const res = await axiosClient.post('/auth/resend-verification');
+  return res.data;
+};
+
+export const forgotPassword = async (email) => {
+  const res = await axiosClient.post('/auth/forgot-password', { email });
+  return res.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const res = await axiosClient.post('/auth/reset-password', { token, newPassword });
+  return res.data;
+};

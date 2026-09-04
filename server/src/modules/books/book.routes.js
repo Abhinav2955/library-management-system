@@ -8,12 +8,14 @@ const {
   updateBookSchema,
   listBooksSchema,
   idParamSchema,
+  recommendationsSchema,
 } = require('./book.validation');
 
 const router = express.Router();
 
 router.get('/', validate(listBooksSchema), controller.list);
 router.get('/:id', validate(idParamSchema), controller.getOne);
+router.get('/:id/recommendations', validate(recommendationsSchema), controller.recommendations);
 
 router.post(
   '/',

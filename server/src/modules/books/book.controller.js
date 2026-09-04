@@ -27,4 +27,9 @@ const remove = asyncHandler(async (req, res) => {
   return new ApiResponse(200, null, 'Book deleted successfully').send(res);
 });
 
-module.exports = { create, list, getOne, update, remove };
+const recommendations = asyncHandler(async (req, res) => {
+  const related = await bookService.getRelatedBooks(req.params.id, req.query.limit);
+  return new ApiResponse(200, related).send(res);
+});
+
+module.exports = { create, list, getOne, update, remove, recommendations };

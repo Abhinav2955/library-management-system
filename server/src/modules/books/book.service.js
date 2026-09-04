@@ -1,4 +1,4 @@
-const { Op, literal } = require('sequelize');
+const { Op, literal, QueryTypes } = require('sequelize');
 const { Book, Author, Category, sequelize } = require('../../database/models');
 const ApiError = require('../../utils/ApiError');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
@@ -33,10 +33,6 @@ const createBook = async (data) => {
     if (data.authorIds?.length) await book.setAuthors(data.authorIds, { transaction: t });
     if (data.categoryIds?.length) await book.setCategories(data.categoryIds, { transaction: t });
 
-    // MUST pass the transaction here — without it, this read happens on a
-    // separate DB connection that (under MySQL's default REPEATABLE READ
-    // isolation) cannot see the just-created, not-yet-committed row. That
-    // would throw "Book not found" and roll back the entire creation.
     return getBookById(book.id, { transaction: t });
   });
 };
@@ -99,7 +95,7 @@ const updateBook = async (id, data) => {
     await book.update(data, { transaction: t });
     if (data.authorIds) await book.setAuthors(data.authorIds, { transaction: t });
     if (data.categoryIds) await book.setCategories(data.categoryIds, { transaction: t });
-    return getBookById(book.id, { transaction: t }); // same reasoning as createBook above
+    return getBookById(book.id, { transaction: t });
   });
 };
 
@@ -109,4 +105,38 @@ const deleteBook = async (id) => {
   await book.destroy();
 };
 
-module.exports = { createBook, getBookById, listBooks, updateBook, deleteBook };
+const getRelatedBooks = async (bookId, limit = 5) => {
+  const borrowerRows = await sequelize.query(
+    `SELECT DISTINCT br.user_id AS userId
+     FROM borrow_records br
+     JOIN book_copies bc ON br.copy_id = bc.id
+     WHERE bc.book_id = :bookId`,
+    { replacements: { bookId }, type: QueryTypes.SELECT }
+  );
+  const userIds = borrowerRows.map((r) => r.userId);
+
+  if (userIds.length === 0) return [];
+
+  const relatedRows = await sequelize.query(
+    `SELECT bc.book_id AS bookId, COUNT(DISTINCT br.user_id) AS coBorrowerCount
+     FROM borrow_records br
+     JOIN book_copies bc ON br.copy_id = bc.id
+     WHERE br.user_id IN (:userIds) AND bc.book_id != :bookId
+     GROUP BY bc.book_id
+     ORDER BY coBorrowerCount DESC
+     LIMIT :limit`,
+    { replacements: { userIds, bookId, limit }, type: QueryTypes.SELECT }
+  );
+
+  if (relatedRows.length === 0) return [];
+
+  const relatedBookIds = relatedRows.map((r) => r.bookId);
+  const books = await Book.findAll({ where: { id: relatedBookIds }, include: includeRelations });
+  const bookById = Object.fromEntries(books.map((b) => [b.id, b]));
+
+  return relatedRows
+    .map((r) => ({ book: bookById[r.bookId], coBorrowerCount: Number(r.coBorrowerCount) }))
+    .filter((r) => r.book);
+};
+
+module.exports = { createBook, getBookById, listBooks, updateBook, deleteBook, getRelatedBooks };

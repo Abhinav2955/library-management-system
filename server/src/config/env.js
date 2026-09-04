@@ -45,4 +45,18 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-module.exports = parsed.data;
+const data = parsed.data;
+
+// CRITICAL SAFETY NET: Jest automatically sets NODE_ENV=test whenever tests
+// run (unless something overrides it). Every test file calls
+// sequelize.sync({ force: true }) in its beforeAll, which DROPS AND
+// RECREATES every table. Without this redirect, that would run against the
+// exact same database as `npm run dev` — silently wiping all real dev data
+// on every `npm test`. This forces test runs onto a separate `_test`
+// database instead, matching what CI already does explicitly via its own
+// DB_NAME env var.
+if (data.NODE_ENV === 'test' && !data.DB_NAME.endsWith('_test')) {
+  data.DB_NAME = `${data.DB_NAME}_test`;
+}
+
+module.exports = data;

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import StampBadge from '../../components/common/StampBadge';
 import Button from '../../components/common/Button';
 
@@ -22,7 +23,11 @@ export default function BookCard({
 
       <div className="flex flex-1 flex-col justify-between">
         <div>
-          <h3 className="font-serif text-base font-semibold leading-snug text-ink">{book.title}</h3>
+          <Link to={`/catalog/${book.id}`}>
+            <h3 className="font-serif text-base font-semibold leading-snug text-ink hover:text-brass">
+              {book.title}
+            </h3>
+          </Link>
           <p className="mt-0.5 text-sm text-ink-muted">{authorNames}</p>
           <p className="mt-1 font-mono text-xs text-ink-muted">ISBN {book.isbn}</p>
         </div>
