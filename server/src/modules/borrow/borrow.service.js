@@ -172,7 +172,7 @@ const returnBook = async (recordId) => {
         {
           userId: record.userId,
           type: 'fine_issued',
-          message: `A fine of $${fine.amount} was applied for returning a book late.`,
+          message: `A fine of ₹${fine.amount} was applied for returning a book late.`,
           borrowRecordId: record.id,
         },
         t
