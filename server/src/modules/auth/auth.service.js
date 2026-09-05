@@ -79,7 +79,7 @@ const sendVerificationEmail = async (user) => {
     // Registration itself should still succeed even if the email queue is
     // unreachable (e.g. Redis not running locally) — the person can request
     // a fresh link later via /auth/resend-verification.
-    logger.error('Failed to queue verification email', { error: err.message });
+    logger.error('Failed to queue verification email', { error: err.message || String(err), code: err.code });
   }
 };
 
@@ -261,7 +261,7 @@ const forgotPassword = async (email) => {
       2000
     );
   } catch (err) {
-    logger.error('Failed to queue password reset email', { error: err.message });
+    logger.error('Failed to queue password reset email', { error: err.message || String(err), code: err.code });
   }
 };
 
